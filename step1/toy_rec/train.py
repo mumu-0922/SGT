@@ -13,11 +13,18 @@ toy_rec.train
 
 from __future__ import annotations
 
+import sys
 import argparse
 import math
 import time
 from pathlib import Path
 from typing import Dict, Tuple
+
+# Allow running as a script: `python toy_rec/train.py`
+if __package__ is None or __package__ == "":
+    repo_root = Path(__file__).resolve().parents[1]
+    if str(repo_root) not in sys.path:
+        sys.path.insert(0, str(repo_root))
 
 import torch
 from torch import nn
@@ -180,7 +187,11 @@ def main() -> None:
                 out = model(batch)
                 logits = out.logits
                 labels = batch["labels"]
-                loss = loss_fn(logits, labels)
+                if global_step == 0: # 打印第一个 batch 的形状以供调试
+                    print(f"input_ids.shape = {batch['input_ids'].shape}")
+                    print(f"attention_mask.sum() = {batch['attention_mask'].sum()}")
+                    print(f"labels[:5] = {batch['labels'][:5]}")
+                loss = loss_fn(logits, labels) 
 
                 # 梯度累积：把 loss 除以 accum，保证等效 batch 不变
                 loss = loss / max(1, args.grad_accum)
@@ -235,6 +246,7 @@ def main() -> None:
     print(f"[done] last checkpoint: {ckpt_path}")
 
 
+
+
 if __name__ == "__main__":
     main()
-

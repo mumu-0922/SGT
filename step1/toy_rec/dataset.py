@@ -119,12 +119,12 @@ def _truncate_history(history: Sequence[int], max_len: int) -> List[int]:
 
 
 def collate_seqrec(
-    batch: Sequence[SeqRecSample],
+    batch: Sequence[SeqRecSample], #输入一堆样本
     *,
-    max_len: int,
-    pad_id: int = 0,
-    device: Optional[torch.device] = None,
-) -> Dict[str, torch.Tensor]:
+    max_len: int, #最大长度
+    pad_id: int = 0, #填充id 用0填充
+    device: Optional[torch.device] = None, 
+) -> Dict[str, torch.Tensor]: #输出：一个字典包含 input_ids, mask, labels
     """
     这是 Step1 最关键的函数：collate_fn。
 
@@ -137,21 +137,22 @@ def collate_seqrec(
     - labels: [B]，下一物品 id（分类标签）
     """
 
-    bsz = len(batch)
+    bsz = len(batch) #batch size 例如32条样本
     max_len = int(max_len)
-
+    #  截断：把每个样本的 history 截断到 max_len 长度以内
     histories = [_truncate_history(x.history, max_len) for x in batch]
+    # 记录每个样本的实际长度
     lengths = torch.tensor([len(h) for h in histories], dtype=torch.long)
 
     # 1) padding：把不同长度的 history 填充到同一长度 T
     #    这里固定 T=max_len（也可以用 batch 内最大长度，但固定更方便对齐后续模型）
     input_ids = torch.full((bsz, max_len), fill_value=int(pad_id), dtype=torch.long)
     attention_mask = torch.zeros((bsz, max_len), dtype=torch.long)
-
+    
     for i, h in enumerate(histories):
         if not h:
-            continue
-        t = min(len(h), max_len)
+            continue    
+        t = min(len(h), max_len) #实际长度和max_len的最小值
         input_ids[i, :t] = torch.tensor(h[:t], dtype=torch.long)
         attention_mask[i, :t] = 1
 
